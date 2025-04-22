@@ -1,0 +1,46 @@
+name: Go
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+
+  build:
+    runs-on: ubuntu-latest
+    container:
+      image: debian:bullseye
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Go
+      uses: actions/setup-go@v4
+      with:
+        go-version: '1.24.1'
+
+    - name: Setup dependencies
+      run: apt-get update && apt-get install -y gcc libgl1-mesa-dev xorg-dev libxkbcommon-dev make ca-certificates upx
+    
+    - name: Update certs
+      run: update-ca-certificates
+
+    - name: Build
+      run: make build-linux
+
+    - name: Compress binary
+      run: upx --best --lzma ./build/git-ask-pass
+
+    - name: Archive binary
+      run: |
+        mkdir -p dist
+        cp ./build/git-ask-pass ./dist/git-ask-pass
+        tar -czvf ./dist/git-ask-pass-linux-amd64.tar.gz -C dist git-ask-pass
+
+    - name: Upload Release Asset
+      uses: softprops/action-gh-release@v2
+      with:
+        files: ./dist/git-ask-pass-linux-amd64.tar.gz
+      env:
+        GITHUB_TOKEN: ${{ secrets.DEPLOY_TOKEN }}
